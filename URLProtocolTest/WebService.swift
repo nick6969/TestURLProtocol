@@ -10,9 +10,14 @@ import UIKit
 import AFNetworking
 import Alamofire
 
-class WebService: NSObject , URLSessionDelegate {
+enum httpMethod : String {
+    case POST = "POST"
+    case GET  = "GET"
+}
+
+class WebServiceSession: NSObject , URLSessionDelegate {
     
-    static let shard = WebService()
+    static let shared = WebServiceSession()
     fileprivate var session : URLSession!
     fileprivate override init() {
         super.init()
@@ -21,18 +26,13 @@ class WebService: NSObject , URLSessionDelegate {
         self.session = URLSession(configuration: config , delegate: self, delegateQueue: URLSession.shared.delegateQueue)
     }
     
-    enum httpMethod : String {
-        case POST = "POST"
-        case GET  = "GET"
-    }
     func request(method:httpMethod ,url:String, parameters:[String : Any]? = nil,timeout:Double = 30 ,handle: @escaping (Data?, URLResponse?, Error?)->Void){
         let parseParameterWithPost = {
             (dic:[String:Any])->Data in
             var par = ""
             dic.forEach{ par += "&\($0.key)=\($0.value)" }
             par.characters.removeFirst(1)
-            let urlEncode = par.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed)?.replacingOccurrences(of: "+", with: "%2B")
-            return urlEncode!.data(using: String.Encoding.utf8)!
+            return par.data(using: String.Encoding.utf8)!
         }
         let parseParameterWithGet = {
             (dic:[String:Any])->String in
@@ -63,7 +63,7 @@ class WebService: NSObject , URLSessionDelegate {
 
 class WebServiceAFNetworking : AFHTTPSessionManager{
     
-    static let shard = WebServiceAFNetworking.init(baseURL: nil)
+    static let shared = WebServiceAFNetworking.init(baseURL: nil)
     
     fileprivate convenience init(baseURL url: URL?)
     {
@@ -76,7 +76,7 @@ class WebServiceAFNetworking : AFHTTPSessionManager{
 
 class WebServiceAlamofire : SessionManager {
     
-    static let shard = WebServiceAlamofire()
+    static let shared = WebServiceAlamofire.init()
     
     fileprivate convenience init()
     {

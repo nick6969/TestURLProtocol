@@ -8,29 +8,63 @@
 
 import UIKit
 
-class ChlURLProtocol: URLProtocol , URLSessionDelegate , URLSessionDataDelegate{
+
+class ChlURLProtocol: URLProtocol , URLSessionDataDelegate{
 
     fileprivate var session : URLSession?
     fileprivate var sessionTask : URLSessionTask?
 
     override class func canInit(with request: URLRequest) -> Bool
     {
-        return URLProtocol.property(forKey: "process", in: request) == nil
+        print(msg: Date().timeIntervalSince1970)
+        if let _ = URLProtocol.property(forKey: "process", in: request)
+        {
+            return false
+        }
+        if request.url?.host?.contains("127") ?? false{
+            print(msg: request.url?.absoluteString ?? "")
+            return true
+        }
+        return false
+    }
+    
+    override class func canInit(with task: URLSessionTask) -> Bool
+    {
+        print(msg: Date().timeIntervalSince1970)
+        guard let request = task.originalRequest else{
+            return false
+        }
+        
+        if let _ = URLProtocol.property(forKey: "process", in: request)
+        {
+            return false
+        }
+        if request.url?.host?.contains("127") ?? false{
+            print(msg: request.url?.absoluteString ?? "")
+            return true
+        }
+
+        return false
     }
     
     override class func canonicalRequest(for request: URLRequest) -> URLRequest
     {
-        return request
+        print(msg: Date().timeIntervalSince1970)
+        let newRequest = request as! NSMutableURLRequest
+        URLProtocol.setProperty("process", forKey: "process", in: newRequest)
+        newRequest.addChlHeader()
+        return newRequest as URLRequest
     }
     
     override func startLoading()
     {
-        print(self.request.url ?? "沒有URL")
-        let request = (self.request as NSURLRequest).mutableCopy() as! NSMutableURLRequest
-        URLProtocol.setProperty("process", forKey: "process", in: request)
+        print(msg: Date().timeIntervalSince1970)
         
-        session = URLSession.init(configuration: .default, delegate: self, delegateQueue: nil)
-        sessionTask = self.session?.dataTask(with: request as URLRequest)
+        
+        var req = self.request
+        req.httpMethod = "GET"
+        session = URLSession.init(configuration: .default, delegate: self, delegateQueue: URLSession.shared.delegateQueue)
+        sessionTask = self.session?.dataTask(with: req)
         { [weak self] (data, res, err) in
             guard let strongSelf = self else { return }
 
@@ -55,3 +89,15 @@ class ChlURLProtocol: URLProtocol , URLSessionDelegate , URLSessionDataDelegate{
         self.session = nil
     }
 }
+
+extension NSMutableURLRequest {
+    func addChlHeader()
+    {
+        self.addValue("ABCD1234", forHTTPHeaderField: "Token")
+    }
+}
+
+
+
+
+

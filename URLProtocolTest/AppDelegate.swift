@@ -18,6 +18,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         URLProtocol.registerClass(ChlURLProtocol.self)
         
+        window = UIWindow(frame:UIScreen.main.bounds)
+        window?.makeKeyAndVisible()
+        window?.rootViewController = UINavigationController(rootViewController: MainVC())
+
         
         return true
     }
@@ -29,14 +33,41 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // MARK: - 列印出程式碼的檔案名 Func 名 列數 及原本的名稱
-public func print<T>(msg: T,file: String = #file,method: String = #function,line: Int = #line)
+public func print<T>(_ type:LogEvent = .info,msg: T,file: String = #file,method: String = #function,line: Int = #line)
 {
     // build setting - Other Swift Flags - Debug  Add ( -D  DEBUG )
     #if DEBUG
-        Swift.print("\((file as NSString).lastPathComponent)[\(line)], \(method): \(msg)")
+        Swift.print("\((file as NSString).lastPathComponent)[\(line)]\(type.rawValue), \(method): \(msg)")
     #endif
+    
 }
+
+public enum LogEvent: String {
+    case error   = "[‼️]" // error
+    case info    = "[ℹ️]" // info
+    case debug   = "[💬]" // debug
+    case warning = "[⚠️]" // warning
+}
+
+
 
 
 extension Data {
@@ -44,7 +75,7 @@ extension Data {
         do {
             return try JSONSerialization.jsonObject(with: self, options: .mutableContainers ) as? [[String:Any]]
         } catch let error as NSError {
-            print(msg:error)
+            print(.error ,msg:error.localizedDescription)
         }
         return nil
     }
@@ -52,7 +83,7 @@ extension Data {
         do {
             return try JSONSerialization.jsonObject(with: self, options: .mutableContainers ) as? [String:Any]
         } catch let error as NSError {
-            print(msg:error)
+            print(.error ,msg:error.localizedDescription)
         }
         return nil
     }
@@ -60,7 +91,7 @@ extension Data {
         do {
             return try JSONSerialization.jsonObject(with: self, options: .mutableContainers ) as? [Any]
         } catch let error as NSError {
-            print(msg:error)
+            print(.error ,msg:error.localizedDescription)
         }
         return nil
     }
@@ -137,4 +168,47 @@ extension Array where Element : Collection , Element: ExpressibleByDictionaryLit
                 print("-------------------\n")
         }
     }
+}
+
+// MARK:- extension UIView - With AutoLayout
+extension UIView {
+    // 便利使用的 NSLayoutConstraint
+    func mLay(_ attribute:NSLayoutAttribute,_ relatedBy:NSLayoutRelation,_ toItem:Any?,_ attribute1:NSLayoutAttribute , multiplier: CGFloat , constant: CGFloat)->NSLayoutConstraint{
+        self.translatesAutoresizingMaskIntoConstraints = false
+        return NSLayoutConstraint(item: self, attribute: attribute, relatedBy: relatedBy, toItem: toItem, attribute: attribute1, multiplier: multiplier, constant: constant)
+    }
+    
+    // 便利使用的 NSLayoutConstraint
+    func mLay(_ attribute:NSLayoutAttribute,_ relatedBy:NSLayoutRelation,_ toItem:Any?)->NSLayoutConstraint{
+        return mLay(attribute, relatedBy, toItem, attribute, multiplier:1, constant:0)
+    }
+    
+    // 便利使用的 NSLayoutConstraint
+    func mLay(_ attribute:NSLayoutAttribute,_ constant: CGFloat)->NSLayoutConstraint{
+        return mLay(attribute, .equal, nil, attribute,multiplier: 1, constant:constant)
+    }
+    
+    // 便利使用的 NSLayoutConstraint
+    func mLay(_ attribute:NSLayoutAttribute,_ relatedBy:NSLayoutRelation,_ toItem:Any?, multiplier: CGFloat, constant: CGFloat)->NSLayoutConstraint{
+        return mLay(attribute, relatedBy , toItem, attribute, multiplier:multiplier, constant:constant)
+    }
+    // 便利使用的 NSLayoutConstraint
+    func mLay(_ attribute:NSLayoutAttribute,_ relatedBy:NSLayoutRelation,_ toItem:Any?,  constant: CGFloat)->NSLayoutConstraint{
+        return mLay(attribute, relatedBy , toItem, attribute, multiplier:1, constant:constant)
+    }
+    // 便利使用的 NSLayoutConstraint
+    func mLay(_ attribute:NSLayoutAttribute,_ relatedBy:NSLayoutRelation,_ toItem:Any?,_ attribute1:NSLayoutAttribute ,constant: CGFloat)->NSLayoutConstraint{
+        return mLay(attribute, relatedBy , toItem, attribute1, multiplier:1, constant:constant)
+    }
+    
+    // 直接四個邊的layout一次處理
+    func mLay(pin:UIEdgeInsets,to view:UIView)->[NSLayoutConstraint]{
+        return [
+            self.mLay(.top    , .equal , view , constant:  pin.top    ),
+            self.mLay(.left   , .equal , view , constant:  pin.left   ),
+            self.mLay(.bottom , .equal , view , constant: -pin.bottom ),
+            self.mLay(.right  , .equal , view , constant: -pin.right  ),
+        ]
+    }
+    
 }
