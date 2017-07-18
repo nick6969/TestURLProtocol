@@ -14,15 +14,15 @@ class ChlURLProtocol: URLProtocol , URLSessionDataDelegate{
     fileprivate var session : URLSession?
     fileprivate var sessionTask : URLSessionTask?
 
+    fileprivate var clientThread : Thread?
+    
     override class func canInit(with request: URLRequest) -> Bool
     {
-        print(msg: Date().timeIntervalSince1970)
         if let _ = URLProtocol.property(forKey: "process", in: request)
         {
             return false
         }
         if request.url?.host?.contains("127") ?? false{
-            print(msg: request.url?.absoluteString ?? "")
             return true
         }
         return false
@@ -30,7 +30,6 @@ class ChlURLProtocol: URLProtocol , URLSessionDataDelegate{
     
     override class func canInit(with task: URLSessionTask) -> Bool
     {
-        print(msg: Date().timeIntervalSince1970)
         guard let request = task.originalRequest else{
             return false
         }
@@ -40,7 +39,7 @@ class ChlURLProtocol: URLProtocol , URLSessionDataDelegate{
             return false
         }
         if request.url?.host?.contains("127") ?? false{
-            print(msg: request.url?.absoluteString ?? "")
+
             return true
         }
 
@@ -49,7 +48,7 @@ class ChlURLProtocol: URLProtocol , URLSessionDataDelegate{
     
     override class func canonicalRequest(for request: URLRequest) -> URLRequest
     {
-        print(msg: Date().timeIntervalSince1970)
+
         let newRequest = request as! NSMutableURLRequest
         URLProtocol.setProperty("process", forKey: "process", in: newRequest)
         newRequest.addChlHeader()
@@ -58,9 +57,9 @@ class ChlURLProtocol: URLProtocol , URLSessionDataDelegate{
     
     override func startLoading()
     {
-        print(msg: Date().timeIntervalSince1970)
-        
-        
+
+        clientThread = Thread.current
+
         var req = self.request
         req.httpMethod = "GET"
         session = URLSession.init(configuration: .default, delegate: self, delegateQueue: URLSession.shared.delegateQueue)
@@ -68,15 +67,18 @@ class ChlURLProtocol: URLProtocol , URLSessionDataDelegate{
         { [weak self] (data, res, err) in
             guard let strongSelf = self else { return }
 
-            if let err = err
-            {
-                strongSelf.client?.urlProtocol(strongSelf, didFailWithError: err)
-            }
-            else
-            {
-                strongSelf.client?.urlProtocol(strongSelf, didReceive: res!, cacheStoragePolicy: .allowed)
-                strongSelf.client?.urlProtocol(strongSelf, didLoad: data!)
-                strongSelf.client?.urlProtocolDidFinishLoading(strongSelf)
+            strongSelf.threadSafety {
+
+                if let err = err
+                {
+                    strongSelf.client?.urlProtocol(strongSelf, didFailWithError: err)
+                }
+                else
+                {
+                    strongSelf.client?.urlProtocol(strongSelf, didReceive: res!, cacheStoragePolicy: .allowed)
+                    strongSelf.client?.urlProtocol(strongSelf, didLoad: data!)
+                    strongSelf.client?.urlProtocolDidFinishLoading(strongSelf)
+                }
             }
         }
         sessionTask?.resume()
@@ -88,6 +90,18 @@ class ChlURLProtocol: URLProtocol , URLSessionDataDelegate{
         self.sessionTask = nil
         self.session = nil
     }
+    
+    func threadSafety(_ clourse:(()->Void)){
+        guard let thread = clientThread else { return }
+        perform(#selector(performClourseOnThread(_:)), on: thread , with: clourse, waitUntilDone: false)
+    }
+    
+    func performClourseOnThread(_ clourse:Any){
+        guard let clourse = clourse as? ()->Void else{ return }
+        clourse()
+    }
+    
+    
 }
 
 extension NSMutableURLRequest {
